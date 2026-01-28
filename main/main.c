@@ -457,13 +457,22 @@ void micro_ros_task(void * arg)
     RCCHECK(rclc_executor_init(&executor, &support.context, 3, &allocator));
     RCCHECK(rclc_executor_add_timer(&executor, &timer));
     RCCHECK(rclc_executor_add_subscription(&executor, &cmd_vel_sub, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA));    
-
+    
+    // รอจนกว่าเวลาจะ Sync กับ PC สำเร็จ 100% 
+    // เพื่อป้องกันข้อมูลชุดแรกเป็นเวลาปี 1970
+    while (!rmw_uros_epoch_synchronized()) 
+    {
+        rmw_uros_sync_session(1000); // พยายาม Sync (timeout 1 วินาที)
+        vTaskDelay(pdMS_TO_TICKS(100)); 
+    }
+    
+    
     while(1){
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
         
         // สั่ง Sync เวลาทุกรอบ หรือทุกๆ ระยะเวลาหนึ่ง
         // ถ้า Agent เชื่อมต่ออยู่ เวลาของ ESP32 จะถูกปรับให้ตรงกับ PC
-        rmw_uros_sync_session(10);
+        rmw_uros_sync_session(100);
         
         
         vTaskDelay(pdMS_TO_TICKS(10));
